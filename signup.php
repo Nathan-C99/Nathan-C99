@@ -9,10 +9,12 @@ $error = '';
 // Check if the signup form has been submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['signup'])) {
     // Check if POST data is set
-    if (isset($_POST['email']) && isset($_POST['password']) && isset($_POST['confirm_password'])) {
+    if (isset($_POST['username']) && isset($_POST['email']) && isset($_POST['password']) && isset($_POST['confirm_password'])) {
+        $username = $_POST['username'];
         $email = $_POST['email'];
         $password = $_POST['password'];
         $confirm_password = $_POST['confirm_password'];
+        $role = 'grave_owner'; // Default role for signup, adjust as needed
 
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -21,23 +23,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['signup'])) {
             // Check if passwords match
             $error = "Passwords do not match.";
         } else {
-            // Check if email already exists in the database
-            $sql = "SELECT * FROM users WHERE email = ?";
+            // Check if username or email already exists in the database
+            $sql = "SELECT * FROM users WHERE username = ? OR email = ?";
             if ($stmt = $conn->prepare($sql)) {
-                $stmt->bind_param("s", $email);
+                $stmt->bind_param("ss", $username, $email);
                 $stmt->execute();
                 $stmt->store_result();
 
                 if ($stmt->num_rows > 0) {
-                    $error = "Email is already registered. Please use another email or login.";
+                    $error = "Username or email is already registered.";
                 } else {
                     // Hash the password for security
                     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
                     // Prepare a SQL statement to insert user data into the database
-                    $sql = "INSERT INTO users (email, password) VALUES (?, ?)";
+                    $sql = "INSERT INTO users (username, password_hash, email, role) VALUES (?, ?, ?, ?)";
                     if ($stmt2 = $conn->prepare($sql)) {
-                        $stmt2->bind_param("ss", $email, $hashed_password); // Bind the input values to the query
+                        $stmt2->bind_param("ssss", $username, $hashed_password, $email, $role); // Bind the input values to the query
                         if ($stmt2->execute()) {
                             // Redirect to the login page after successful signup
                             header("Location: login.php");
@@ -79,6 +81,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['signup'])) {
         <?php endif; ?>
 
         <form action="signup.php" method="POST">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            <br>
             <label for="email">Email:</label>
             <input type="email" id="email" name="email" required>
             <br>
